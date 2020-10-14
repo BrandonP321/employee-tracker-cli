@@ -10,15 +10,10 @@ const userChoices = [
     'Add a department',
     'Add a role',
     'Add an employee',
-    'View a department',
-    'View a role',
-    'View an employee',
-    "Update an employee's role",
-    "View employees by manager",
-    "Delete a department",
-    "Delete a role",
-    "Delete an employee",
-    "View the total utilized budget of a department"
+    'View departments',
+    'View roles',
+    'View employees',
+    "Update an employee's role"
 ]
 
 const connection = mysql.createConnection({
@@ -57,8 +52,56 @@ function promptUser() {
             case 'Add an employee':
                 addEmployee();
                 break;
+            case 'View departments':
+                viewDepartments();
+                break;
+            case 'View roles':
+                viewRoles();
+                break;
+            case 'View employees':
+                viewEmployees();
+                break;
+            case "Update an employee's role":
+                updateEmployeeRole();
+                break;
         }
     })
+}
+
+function viewDepartments() {
+    connection.query("SELECT name FROM department", function(err, data) {
+        if(err) throw err;
+        if (data.length === 0) {
+            console.log("\n*** YOU DON'T SEEM TO HAVE AN DEPARTMENTS YET ***\n")
+        } else {
+            console.table(data);
+        }
+        promptUser();
+    });
+}
+
+function viewRoles() {
+    connection.query("SELECT title FROM role", function(err, data) {
+        if(err) throw err;
+        if (data.length === 0) {
+            console.log("\n*** YOU DON'T SEEM TO HAVE AN ROLES YET ***\n")
+        } else {
+            console.table(data);
+        }
+        promptUser();
+    });
+}
+
+function viewEmployees() {
+    connection.query("SELECT first_name FROM employee", function(err, data) {
+        if(err) throw err;
+        if (data.length === 0) {
+            console.log("\n*** YOU DON'T SEEM TO HAVE AN EMPLOYEES YET ***\n")
+        } else {
+            console.table(data);
+        }
+        promptUser();
+    });
 }
 
 function addDepartment() {
@@ -138,7 +181,6 @@ function addRole(department=null) {
                 }
             });
         });
-
     })
 }
 
