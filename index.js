@@ -17,17 +17,17 @@ const userChoices = [
 ]
 
 const connection = mysql.createConnection({
-host: "localhost",
+    host: "localhost",
 
-port: 3306,
+    port: 3306,
 
-user: "root",
+    user: "root",
 
-password: "scooby321",
-database: "employees_db"
+    password: "scooby321",
+    database: "employees_db"
 });
 
-connection.connect(function(err) {
+connection.connect(function (err) {
     if (err) throw err;
 
     updateRolesList();
@@ -41,7 +41,7 @@ function promptUser() {
             choices: userChoices,
             name: "userChoice"
         }
-    ).then(function(answer) {
+    ).then(function (answer) {
         switch (answer.userChoice) {
             case 'Add a department':
                 addDepartment();
@@ -68,9 +68,37 @@ function promptUser() {
     })
 }
 
+function updateEmployeeRole() {
+    inquirer.prompt([
+        {
+            type: 'list',
+            message: "Which employee's role are you updating?",
+            choices: employeesArr,
+            name: 'employee'
+        },
+        {
+            type: 'list',
+            message: "What is the new role of the employee?",
+            choices: rolesArr,
+            name: 'newRole'
+        }
+    ]).then(function(answer) {
+        connection.query("SELECT id FROM role WHERE title=?", answer.newRole, function(err, data) {
+            if(err) throw err;
+            let roleId = data[0].id
+            
+            connection.query("UPDATE employee SET role_id=? WHERE first_name=?", [roleId, answer.employee], function(err, data) {
+                if(err) throw err;
+                console.log("\n*** EMPLOYEE ROLE HAS BEEN UPDATED ***\n")
+                promptUser();
+            });
+        });
+    })
+}
+
 function viewDepartments() {
-    connection.query("SELECT name FROM department", function(err, data) {
-        if(err) throw err;
+    connection.query("SELECT name FROM department", function (err, data) {
+        if (err) throw err;
         if (data.length === 0) {
             console.log("\n*** YOU DON'T SEEM TO HAVE AN DEPARTMENTS YET ***\n")
         } else {
@@ -81,8 +109,8 @@ function viewDepartments() {
 }
 
 function viewRoles() {
-    connection.query("SELECT title FROM role", function(err, data) {
-        if(err) throw err;
+    connection.query("SELECT title FROM role", function (err, data) {
+        if (err) throw err;
         if (data.length === 0) {
             console.log("\n*** YOU DON'T SEEM TO HAVE AN ROLES YET ***\n")
         } else {
@@ -93,8 +121,8 @@ function viewRoles() {
 }
 
 function viewEmployees() {
-    connection.query("SELECT first_name FROM employee", function(err, data) {
-        if(err) throw err;
+    connection.query("SELECT first_name, last_name FROM employee", function (err, data) {
+        if (err) throw err;
         if (data.length === 0) {
             console.log("\n*** YOU DON'T SEEM TO HAVE AN EMPLOYEES YET ***\n")
         } else {
@@ -116,22 +144,23 @@ function addDepartment() {
             message: "Would you like to add a role to this department right now?",
             name: "addRole"
         }
-    ]).then(function(answer) {
-        connection.query("INSERT INTO department(name) VALUES(?);", answer.departmentToAdd, function(err, data) {
-            if(err) throw err;
+    ]).then(function (answer) {
+        connection.query("INSERT INTO department(name) VALUES(?);", answer.departmentToAdd, function (err, data) {
+            if (err) throw err;
         });
         console.log("\n***DEPARTMENT HAS BEEN ADDED***\n")
+        departmentsArr.push(answer.departmentToAdd)
         if (answer.addRole) {
             departmentsArr.push(answer.departmentToAdd)
             addRole(answer.departmentToAdd)
         } else {
             promptUser();
         }
-        
+
     })
 }
 
-function addRole(department=null) {
+function addRole(department = null) {
     // first make sure that arrays of roles and departments is up to date
 
     inquirer.prompt([
@@ -141,7 +170,7 @@ function addRole(department=null) {
             name: 'role'
         },
         {
-            when: function() {return !department},
+            when: function () { return !department },
             type: 'list',
             message: 'What department is this role a part of?',
             choices: departmentsArr,
@@ -157,18 +186,18 @@ function addRole(department=null) {
             message: "Would you like to add an employee to this role right now?",
             name: 'addEmployeeToRole'
         }
-    ]).then(function(answer) {
+    ]).then(function (answer) {
         let departmentToAdd = '';
         if (answer.hasOwnProperty('department')) departmentToAdd = answer.department;
         else departmentToAdd = department;
 
         // get id of department to add it to the role
-        connection.query("SELECT id FROM department WHERE name=?", departmentToAdd, function(err, data) {
-            if(err) throw err;
+        connection.query("SELECT id FROM department WHERE name=?", departmentToAdd, function (err, data) {
+            if (err) throw err;
 
             // insert the new row into the role table
-            connection.query("INSERT INTO role(title, salary, department_id) VALUES(?, ?, ?)", [answer.role, answer.salary, data[0].id], function(err, data) {
-                if(err) throw err;
+            connection.query("INSERT INTO role(title, salary, department_id) VALUES(?, ?, ?)", [answer.role, answer.salary, data[0].id], function (err, data) {
+                if (err) throw err;
                 console.log('\n***NEW ROLE SUCCESSFULLY ADDED***\n')
                 // push the new role to the roles array for user in user prompts
                 rolesArr.push(answer.role)
@@ -184,7 +213,7 @@ function addRole(department=null) {
     })
 }
 
-function addEmployee(role=null) {
+function addEmployee(role = null) {
     inquirer.prompt([
         {
             type: 'input',
@@ -197,18 +226,55 @@ function addEmployee(role=null) {
             name: "lastName"
         },
         {
-            when: function(){return !role},
+            when: function () { return !role },
             type: 'list',
             choices: rolesArr,
             message: "What is the role of the employee?",
-            name: role
+            name: 'role'
+        },
+        {
+            when: function () { return employeesArr.length > 0 },
+            type: 'list',
+            message: "Who is the employee's manager?",
+            choices: employeesArr,
+            name: 'manager'
         }
-    ])
+    ]).then(function (answer) {
+        console.log(answer)
+        // get id of role for the employee
+        connection.query("SELECT id FROM role WHERE title=?", answer.role, function (err, data) {
+            if (err) throw err;
+            let role = data[0].role
+            console.log('check has own prop')
+            if (answer.hasOwnProperty('manager')) {
+                console.log('has own prop')
+                // get id for manager
+                connection.query("SELECT id FROM employee WHERE first_name=?", answer.manager, function (err, data) {
+                    if (err) throw err;
+                    let manager = data[0].id
+                    // INSERT new employee into db
+                    connection.query("INSERT INTO employee (first_name, last_name, role_id, manager_id) VALUES(?, ?, ?, ?);", [answer.firstName, answer.lastName, role, manager], function (err, data) {
+                        if (err) throw err;
+                        console.log("\n*** NEW EMPLOYEE HAS BEEN ADDED ***\n")
+                        promptUser();
+                    });
+                });
+            } else {
+                console.log('does not have own prop')
+                connection.query("INSERT INTO employee (first_name, last_name, role_id) VALUES(?, ?, ?)", [answer.firstName, answer.lastName, role], function (err, data) {
+                    if (err) throw err;
+                    console.log("\n*** NEW EMPLOYEE HAS BEEN ADDED ***\n")
+                    promptUser();
+                });
+            }
+            employeesArr.push(answer.firstName)
+        });
+    })
 }
 
 function updateRolesList() {
-    connection.query("SELECT title FROM role", function(err, data) {
-        if(err) throw err;
+    connection.query("SELECT title FROM role", function (err, data) {
+        if (err) throw err;
         rolesArr = [];
         data.forEach(role => rolesArr.push(role.title))
         updateDepartmentsList();
@@ -216,8 +282,8 @@ function updateRolesList() {
 }
 
 function updateDepartmentsList() {
-    connection.query("SELECT name FROM department", function(err, data) {
-        if(err) throw err;
+    connection.query("SELECT name FROM department", function (err, data) {
+        if (err) throw err;
         departmentsArr = [];
         data.forEach(department => departmentsArr.push(department.name))
         updateEmployeeList()
@@ -225,10 +291,10 @@ function updateDepartmentsList() {
 }
 
 function updateEmployeeList() {
-    connection.query("SELECT first_name, last_name FROM employee", function(err, data) {
-        if(err) throw err;
+    connection.query("SELECT first_name, last_name FROM employee", function (err, data) {
+        if (err) throw err;
         employeesArr = [];
-        data.forEach(employee => employeesArr.push(employee.first_name, employee.last_name))
+        data.forEach(employee => employeesArr.push(employee.first_name))
         promptUser();
     });
 }
